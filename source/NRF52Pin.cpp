@@ -53,15 +53,15 @@ volatile uint32_t interrupt_enable = 0;
 
 static NRF52Pin *irq_pins[NUM_PINS];
 
-MemorySource* NRF52Pin::pwmSource = NULL;
-NRF52PWM* NRF52Pin::pwm = NULL;
-uint16_t NRF52Pin::pwmBuffer[NRF52PIN_PWM_CHANNEL_MAP_SIZE] = {0,0,0,0};
-int8_t NRF52Pin::pwmChannelMap[NRF52PIN_PWM_CHANNEL_MAP_SIZE] = {-1,-1,-1,-1};
-uint8_t NRF52Pin::lastUsedChannel = 3;
+MemorySource* NRF52Pin::pwmSource                                 = NULL;
+NRF52PWM* NRF52Pin::pwm                                           = NULL;
+uint16_t NRF52Pin::pwmBuffer[NRF52PIN_PWM_CHANNEL_MAP_SIZE]       = {0,0,0,0};
+int8_t NRF52Pin::pwmChannelMap[NRF52PIN_PWM_CHANNEL_MAP_SIZE]     = {-1,-1,-1,-1};
+uint8_t NRF52Pin::lastUsedChannel                                 = 3;
 
-int16_t NRF52Pin::adcSample = 0;
-int8_t NRF52Pin::saadcChannelMap[NRF52PIN_SSADC_MHANNEL_MAP_SIZE] = {2,3,4,5,28,29,30,31};
- 
+int16_t NRF52Pin::adcSample                                       = 0;
+int8_t NRF52Pin::saadcChannelMap[NRF52PIN_SAADC_CHANNEL_MAP_SIZE] = {2,3,4,5,28,29,30,31};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -76,7 +76,7 @@ void GPIOTE_IRQHandler(void)
             {
                 uint32_t currCnf = NRF_P0->PIN_CNF[i];
                 uint8_t currSense = (currCnf & GPIO_PIN_CNF_SENSE_Msk) >> GPIO_PIN_CNF_SENSE_Pos;
-                
+
                 // hi: latch indicates a state change... determine if we were looking for hi or lo.
                 if (currSense == GPIO_PIN_CNF_SENSE_High)
                 {
@@ -184,7 +184,7 @@ int NRF52Pin::setDigitalValue(int value)
     if(!(PIN_CAPABILITY_DIGITAL & capability))
         return DEVICE_NOT_SUPPORTED;
 
-    // Write the value, before setting as output - this way the pin state update will be atomic    
+    // Write the value, before setting as output - this way the pin state update will be atomic
     if (value)
         PORT->OUTSET = 1 << PIN;
     else
@@ -197,7 +197,7 @@ int NRF52Pin::setDigitalValue(int value)
         disconnect();
 
         uint32_t cnf = PORT->PIN_CNF[PIN];
-        
+
         // output
         cnf |= 1;
 
@@ -286,7 +286,7 @@ int NRF52Pin::initialiseSAADC()
     if(!isConfig)
     {
         isConfig = true;
-        
+
         // Configure the SAADC resolution.
         NRF_SAADC->RESOLUTION = SAADC_RESOLUTION_VAL_12bit << SAADC_RESOLUTION_VAL_Pos;
 
@@ -295,7 +295,7 @@ int NRF52Pin::initialiseSAADC()
 
         // Enable SAADC (would capture analog pins if they were used in CH[0].PSELP)
         NRF_SAADC->ENABLE = SAADC_ENABLE_ENABLE_Enabled << SAADC_ENABLE_ENABLE_Pos;
-       
+
         // Calibrate the SAADC (only needs to be done once in a while)
         NRF_SAADC->TASKS_CALIBRATEOFFSET = 1;
         while (NRF_SAADC->EVENTS_CALIBRATEDONE == 0);
@@ -322,7 +322,7 @@ int NRF52Pin::setAnalogValue(int value)
     // //check if this pin has an analogue mode...
      if(!(PIN_CAPABILITY_ANALOG & capability))
          return DEVICE_NOT_SUPPORTED;
-    
+
     // //sanitise the level value
     if(value < 0 || value > DEVICE_PIN_MAX_OUTPUT)
          return DEVICE_INVALID_PARAMETER;
@@ -416,16 +416,16 @@ int NRF52Pin::getAnalogValue()
     // check if this pin has an analogue mode...
     if(!(PIN_CAPABILITY_ANALOG & capability))
         return DEVICE_NOT_SUPPORTED;
-    
+
     // find existiong channel
-    for(int i = 0; i < NRF52PIN_SSADC_MHANNEL_MAP_SIZE; i++)
+    for(int i = 0; i < NRF52PIN_SAADC_CHANNEL_MAP_SIZE; i++)
     {
         if(saadcChannelMap[i] == name)
         {
-            channel = i+1; 
+            channel = i+1;
             break;
         }
-            
+
     }
 
     // no existing channel found
@@ -434,19 +434,19 @@ int NRF52Pin::getAnalogValue()
     {
         initialiseSAADC();
     }
-    
-    // Configure SAADC singled-ended channel, Internal reference (0.6V) and 1/6 gain.
-    NRF_SAADC->CH[0].CONFIG = (SAADC_CH_CONFIG_GAIN_Gain1_4    << SAADC_CH_CONFIG_GAIN_Pos) |
-                              (SAADC_CH_CONFIG_MODE_SE         << SAADC_CH_CONFIG_MODE_Pos) |
-                              (SAADC_CH_CONFIG_REFSEL_VDD1_4 << SAADC_CH_CONFIG_REFSEL_Pos) |
-                              (SAADC_CH_CONFIG_RESN_Bypass     << SAADC_CH_CONFIG_RESN_Pos) |
-                              (SAADC_CH_CONFIG_RESP_Bypass     << SAADC_CH_CONFIG_RESP_Pos) |
-                              (SAADC_CH_CONFIG_TACQ_40us        << SAADC_CH_CONFIG_TACQ_Pos);
+
+    // Configure SAADC singled-ended channel, (VDD/4) as reference and 1/4 gain.
+    NRF_SAADC->CH[0].CONFIG = (SAADC_CH_CONFIG_GAIN_Gain1_4   << SAADC_CH_CONFIG_GAIN_Pos)  |
+                              (SAADC_CH_CONFIG_MODE_SE        << SAADC_CH_CONFIG_MODE_Pos)  |
+                              (SAADC_CH_CONFIG_REFSEL_VDD1_4  << SAADC_CH_CONFIG_REFSEL_Pos)|
+                              (SAADC_CH_CONFIG_RESN_Bypass    << SAADC_CH_CONFIG_RESN_Pos)  |
+                              (SAADC_CH_CONFIG_RESP_Bypass    << SAADC_CH_CONFIG_RESP_Pos)  |
+                              (SAADC_CH_CONFIG_TACQ_40us      << SAADC_CH_CONFIG_TACQ_Pos);
 
     // Configure the SAADC channel with VDD as positive input, no negative input(single ended).
     NRF_SAADC->CH[0].PSELP = ((unsigned long)channel) << SAADC_CH_PSELP_PSELP_Pos;
     NRF_SAADC->CH[0].PSELN = SAADC_CH_PSELN_PSELN_NC << SAADC_CH_PSELN_PSELN_Pos;
-    
+
     // Start the SAADC and wait for the started event.
     NRF_SAADC->TASKS_START = 1;
     while (NRF_SAADC->EVENTS_STARTED == 0);
@@ -553,7 +553,7 @@ int NRF52Pin::setServoPulseUs(int pulseWidth)
 
     if (pwm->getPeriodUs() != 20000)
         pwm->setPeriodUs(20000);
- 
+
     return setAnalogPeriodUs(pulseWidth);
 }
 
@@ -576,7 +576,7 @@ int NRF52Pin::setAnalogPeriodUs(int period)
             float v = (float) pwmBuffer[i];
             v = v * (float)pwm->getSampleRange();
             v = v / (float) oldRange;
-             
+
             pwmBuffer[i] = (uint16_t) v;
         }
 
@@ -585,7 +585,7 @@ int NRF52Pin::setAnalogPeriodUs(int period)
 
         return DEVICE_OK;
     }
-    
+
     return DEVICE_NOT_SUPPORTED;
 }
 

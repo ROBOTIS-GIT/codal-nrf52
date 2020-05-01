@@ -36,7 +36,7 @@ DEALINGS IN THE SOFTWARE.
 #define ID_NRF52_PIN_LO  (DEVICE_ID_IO_P0 + 36)
 
 #define NRF52PIN_PWM_CHANNEL_MAP_SIZE        4
-#define NRF52PIN_SSADC_MHANNEL_MAP_SIZE      8
+#define NRF52PIN_SAADC_CHANNEL_MAP_SIZE      8
 
 /**
   * Class definition for Pin.
@@ -59,10 +59,10 @@ namespace codal
         static uint8_t lastUsedChannel;
 
         void* obj;
-        
+
         static int8_t saadcChannelMap[NRF52PIN_SSADC_MHANNEL_MAP_SIZE];
         static int16_t adcSample;
-        
+
         /**
              * Instantiates the components required for PWM if not previously created
              */
@@ -371,7 +371,7 @@ namespace codal
 
         /**
          * Set pin value iff its current value as input is the opposite.
-         * 
+         *
          * If pin is configured as input and reads as !value, set it to value
          * and return DEVICE_OK.
          * Otherwise, do nothing and return DEVICE_BUSY.
